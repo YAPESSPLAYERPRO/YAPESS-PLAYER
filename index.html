@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
+    <!-- Chargement des scripts officiels Google Firebase -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+    <!-- Moteur vidéo Hls.js -->
     <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -33,23 +37,23 @@
     <div id="activation-screen">
         <div class="activation-box">
             <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
-            <p style="margin-top: 10px; color: #aaa;">Application non activée ou période d'essai expirée.</p>
+            <p style="margin-top: 10px; color: #aaa;">Application non activée ou licence expirée.</p>
             <p style="margin-top: 20px;">Donnez cet identifiant à votre revendeur :</p>
             <div id="display-id" class="device-id">CHARGEMENT...</div>
-            <p style="font-size: 14px; color: #ff9900;">Statut : En attente de paiement de la licence</p>
+            <p id="status-text" style="font-size: 14px; color: #ff9900;">Statut : Connexion à la base sécurisée...</p>
         </div>
     </div>
 
-    <!-- 2. L'APPLICATION (Masquée par défaut au début) -->
+    <!-- 2. L'APPLICATION PRINCIPALE -->
     <div class="sidebar">
         <h2>Catégories</h2>
         <div class="category-item active">🇫🇷 France LIGHT</div>
     </div>
 
     <div class="channel-list">
-        <div class="channel-item" onclick="changerChaine('https://mux.dev', 'TF1 HD')">
+        <div class="channel-item" onclick="changerChaine(playlistUrl, 'TF1 HD')">
             <img src="https://placeholder.com" alt="Logo">
-            <div><strong>TF1 HD</strong><p style="font-size: 12px; color: #aaa;">En direct</p></div>
+            <div><strong>TF1 HD</strong><p style="font-size: 12px; color: #aaa;">Flux activé par le revendeur</p></div>
         </div>
     </div>
 
@@ -59,7 +63,23 @@
     </div>
 
     <script>
-        // Génération d'un ID unique pour la télé du client
+        // Configuration Firebase avec TES clés personnalisées
+        const firebaseConfig = {
+            apiKey: "AIzaSyC79VkMKj7BEvODYnRl_9BEgxrrIobWMjY",
+            authDomain: "yapess-player-pro.firebaseapp.com",
+            projectId: "yapess-player-pro",
+            storageBucket: "yapess-player-pro.firebasestorage.app",
+            messagingSenderId: "1073719899008",
+            appId: "1:1073719899008:web:50a65b212119a831330765",
+            measurementId: "G-QKLBX5RHTN"
+        };
+
+        // Initialisation de Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        let playlistUrl = ""; // Contiendra le lien IPTV du client
+
+        // Vérification de la Licence
         function initDevice() {
             let id = localStorage.getItem('my_tv_license_id');
             if (!id) {
@@ -67,25 +87,40 @@
                 localStorage.setItem('my_tv_license_id', id);
             }
             document.getElementById('display-id').innerText = id;
-            
-            // On laisse "false" pour que l'écran reste bloqué pour l'instant
-            let estActive = false; 
-            
-            if (estActive) {
-                document.getElementById('activation-screen').style.display = 'none';
-            }
+
+            // Lecture en temps réel dans Firebase Firestore
+            db.collection("devices").doc(id).get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.is_active === true) {
+                        playlistUrl = data.playlist_url; // On récupère son lien IPTV
+                        document.getElementById('activation-screen').style.display = 'none'; // On débloque la TV !
+                    } else {
+                        document.getElementById('status-text').innerText = "Statut : Licence désactivée ou expirée.";
+                    }
+                } else {
+                    document.getElementById('status-text').innerText = "Statut : Non enregistré. En attente d'activation.";
+                }
+            }).catch((error) => {
+                console.error("Erreur Firebase:", error);
+                document.getElementById('status-text').innerText = "Erreur de connexion. Vérifiez internet.";
+            });
         }
 
-        // Moteur vidéo
+        // Moteur vidéo HLS
         const video = document.getElementById('videoPlayer');
         let hls = null;
 
         function changerChaine(url, nomChaine) {
+            if (!url) { alert("Aucun flux configuré pour cet appareil !"); return; }
             document.getElementById('current-channel-title').innerText = nomChaine;
             if (hls) { hls.destroy(); }
             if (Hls.isSupported()) {
                 hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() { video.play(); });
             }
         }
 
