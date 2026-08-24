@@ -9,24 +9,19 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
         
-        /* 1. ÉCRAN D'ACTIVATION */
-        #activation-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#111; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .activation-box { border: 2px solid #ff9900; padding: 40px; border-radius: 10px; background: #1a1a1a; max-width: 500px; }
-        .device-id { font-size: 32px; font-weight: bold; color: #ff9900; letter-spacing: 2px; margin: 20px 0; background: #000; padding: 10px; border-radius: 5px; }
-        
-        /* 2. ÉCRAN DE CONNEXION (LOGIN XTREAM CODES) */
-        #login-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#181818; z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        .login-box { background: #222; padding: 30px; border-radius: 8px; width: 400px; border-top: 4px solid #ff9900; }
-        .login-box h3 { margin-bottom: 20px; text-align: center; color: #ff9900; text-transform: uppercase; }
+        /* ÉCRAN DE CONNEXION DIRECT (Affiche en premier) */
+        #login-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#181818; z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .login-box { background: #222; padding: 30px; border-radius: 8px; width: 400px; border-top: 4px solid #ff9900; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .login-box h3 { margin-bottom: 20px; text-align: center; color: #ff9900; text-transform: uppercase; letter-spacing: 1px; }
         .input-group { margin-bottom: 15px; }
-        .input-group label { display: block; margin-bottom: 5px; font-size: 12px; color: #aaa; }
-        .input-group input { width: 100%; padding: 10px; background: #111; border: 1px solid #333; color: white; border-radius: 4px; font-size: 14px; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 12px; color: #aaa; text-transform: uppercase; }
+        .input-group input { width: 100%; padding: 12px; background: #111; border: 1px solid #333; color: white; border-radius: 4px; font-size: 14px; }
         .input-group input:focus { border-color: #ff9900; outline: none; }
-        .btn-login { width: 100%; padding: 12px; background: #ff9900; border: none; color: black; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-login { width: 100%; padding: 14px; background: #ff9900; border: none; color: black; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; text-transform: uppercase; }
         .btn-login:hover { background: #e0a800; }
         #login-status { margin-top: 15px; text-align: center; font-size: 13px; color: #ff9900; }
 
-        /* 3. INTERFACE PRINCIPALE TV */
+        /* INTERFACE PRINCIPALE TV */
         .sidebar { width: 25%; background-color: #0b0b0b; padding: 20px; border-right: 2px solid #222; height: 100%; overflow-y: auto; }
         .sidebar h2 { font-size: 18px; margin-bottom: 20px; color: #ff9900; text-transform: uppercase; }
         .category-item { padding: 12px; margin-bottom: 8px; background: #1c1c1c; border-radius: 5px; cursor: pointer; font-size: 14px; }
@@ -44,39 +39,28 @@
 </head>
 <body>
 
-    <!-- 1. ÉCRAN D'ACTIVATION (DÉMO 5 SECONDES) -->
-    <div id="activation-screen">
-        <div class="activation-box">
-            <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
-            <p style="margin-top: 10px; color: #aaa;">Application en mode démonstration autonome.</p>
-            <p style="margin-top: 20px;">Identifiant de votre appareil :</p>
-            <div id="display-id" class="device-id">GÉNÉRATION...</div>
-            <p style="font-size: 14px; color: #ff9900;">Chargement du portail de connexion...</p>
-        </div>
-    </div>
-
-    <!-- 2. ÉCRAN DE CONNEXION XTREAM CODES -->
+    <!-- PORTAIL DE CONNEXION XTREAM CODES DIRECT -->
     <div id="login-screen">
         <div class="login-box">
-            <h3>Connexion Portail</h3>
+            <h3>YAPESS PLAYER PRO</h3>
             <div class="input-group">
-                <label>URL DU SERVEUR (Doit être HTTPS)</label>
+                <label>URL du serveur (HTTPS uniquement)</label>
                 <input type="text" id="xp-url" placeholder="https://exemple.com:8080">
             </div>
             <div class="input-group">
-                <label>NOM D'UTILISATEUR (Username)</label>
+                <label>Nom d'utilisateur (Username)</label>
                 <input type="text" id="xp-user" placeholder="Identifiant">
             </div>
             <div class="input-group">
-                <label>MOT DE PASSE (Password)</label>
+                <label>Mot de passe (Password)</label>
                 <input type="password" id="xp-pass" placeholder="Mot de passe">
             </div>
-            <button class="btn-login" onclick="connexionXtream()">CHARGER L'ABONNEMENT</button>
-            <div id="login-status">Entrez vos codes revendeur.</div>
+            <button class="btn-login" onclick="connexionXtream()">Charger l'abonnement</button>
+            <div id="login-status">Entrez vos codes revendeur pour tester.</div>
         </div>
     </div>
 
-    <!-- 3. INTERFACE PRINCIPALE DE L'APPLICATION -->
+    <!-- INTERFACE DE L'APPLICATION -->
     <div class="sidebar">
         <h2>Catégories</h2>
         <div id="categories-container">
@@ -99,17 +83,6 @@
     </div>
 
     <script>
-        // Génération ID Unique
-        let myId = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-        document.getElementById('display-id').innerText = myId;
-
-        // Passage automatique à l'écran de connexion après 5 secondes
-        setTimeout(() => {
-            document.getElementById('activation-screen').style.display = 'none';
-            document.getElementById('login-screen').style.display = 'flex';
-        }, 5000);
-
-        // Variables globales pour stocker les infos Xtream
         let serverUrl = "";
         let username = "";
         let password = "";
@@ -129,41 +102,37 @@
 
             document.getElementById('login-status').innerText = "Connexion au serveur en cours...";
 
-            // Étape 1 : Appel à l'API Xtream pour récupérer les catégories de la TV en direct (Live)
+            // Récupération des catégories Live via l'API Xtream Codes
             const apiCategories = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
 
             fetch(apiCategories)
                 .then(response => response.json())
                 .then(categories => {
                     if (categories && categories.length > 0) {
-                        document.getElementById('login-status').innerText = "Catégories récupérées avec succès !";
+                        document.getElementById('login-status').innerText = "Catégories chargées !";
                         afficherCategories(categories);
-                        // Fermer l'écran de connexion pour afficher l'appli
-                        setTimeout(() => {
-                            document.getElementById('login-screen').style.display = 'none';
-                        }, 1000);
+                        // Cacher le formulaire de connexion pour afficher l'interface de streaming
+                        document.getElementById('login-screen').style.display = 'none';
                     } else {
-                        document.getElementById('login-status').innerText = "Erreur : Identifiants invalides ou serveur vide.";
+                        document.getElementById('login-status').innerText = "Erreur : Serveur vide ou codes incorrects.";
                     }
                 })
                 .catch(error => {
-                    console.error("Erreur de connexion API:", error);
-                    document.getElementById('login-status').innerText = "Erreur de connexion. Vérifiez l'URL ou le HTTPS.";
+                    console.error("Erreur API:", error);
+                    document.getElementById('login-status').innerText = "Erreur. Vérifiez l'URL ou l'accès HTTPS.";
                 });
         }
 
-        // AFFICHAGE DES VRAIES CATÉGORIES DU PANEL
+        // AFFICHAGE DES CATÉGORIES
         function afficherCategories(categories) {
             const container = document.getElementById('categories-container');
-            container.innerHTML = ""; // On nettoie
+            container.innerHTML = "";
 
             categories.forEach(cat => {
                 const div = document.createElement('div');
                 div.className = "category-item";
                 div.innerText = cat.category_name;
-                // Quand on clique sur une catégorie, on charge ses chaînes
                 div.onclick = () => {
-                    // Mettre en surbrillance la catégorie active
                     document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
                     div.classList.add('active');
                     chargerChainesDeLaCategorie(cat.category_id);
@@ -172,7 +141,7 @@
             });
         }
 
-        // CHARGEMENT DES CHAÎNES DE LA CATÉGORIE CLIQUÉE
+        // CHARGEMENT DES CHAÎNES
         function chargerChainesDeLaCategorie(categoryId) {
             const container = document.getElementById('channels-container');
             container.innerHTML = "<p style='color:#aaa;'>Chargement des chaînes...</p>";
@@ -182,5 +151,48 @@
             fetch(apiStreams)
                 .then(response => response.json())
                 .then(streams => {
-                    container.innerHTML = ""; // Nettoyage
+                    container.innerHTML = "";
                     if(streams.length === 0) {
+                        container.innerHTML = "<p style='color:#666;'>Aucune chaîne disponible.</p>";
+                        return;
+                    }
+
+                    streams.forEach(stream => {
+                        const div = document.createElement('div');
+                        div.className = "channel-item";
+                        div.innerText = stream.name;
+                        div.onclick = () => {
+                            // Génération du lien de streaming direct Xtream Codes (.m3u8)
+                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
+                            lancerFluxIPTV(streamUrl, stream.name);
+                        };
+                        container.appendChild(div);
+                    });
+                })
+                .catch(err => {
+                    container.innerHTML = "<p style='color:red;'>Erreur de chargement des flux.</p>";
+                });
+        }
+
+        // LECTURE DU FLUX VIDÉO
+        function lancerFluxIPTV(url, nomChaine) {
+            document.getElementById('current-channel-title').innerText = nomChaine;
+            if (hls) hls.destroy();
+
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play().catch(e => console.log("Lecture manuelle requise"));
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            }
+        }
+    </script>
+</body>
+</html>
