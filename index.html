@@ -3,24 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
-    <!-- Moteur vidéo professionnel Hls.js pour lire tes vrais flux IPTV -->
+    <!-- MOTEUR DE LECTURE PROFESSIONNEL RE-CONFIGURÉ -->
     <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
         
-        /* ÉCRAN DE CONNEXION DIRECT */
+        /* PORTAIL DE CONNEXION */
         #login-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#181818; z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .login-box { background: #222; padding: 30px; border-radius: 8px; width: 400px; border-top: 4px solid #ff9900; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .login-box h3 { margin-bottom: 20px; text-align: center; color: #ff9900; text-transform: uppercase; letter-spacing: 1px; }
+        .login-box h3 { margin-bottom: 20px; text-align: center; color: #ff9900; text-transform: uppercase; }
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; margin-bottom: 5px; font-size: 12px; color: #aaa; text-transform: uppercase; }
         .input-group input { width: 100%; padding: 12px; background: #111; border: 1px solid #333; color: white; border-radius: 4px; font-size: 14px; }
         .input-group input:focus { border-color: #ff9900; outline: none; }
         .btn-login { width: 100%; padding: 14px; background: #ff9900; border: none; color: black; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; text-transform: uppercase; }
-        .btn-login:hover { background: #e0a800; }
-        #login-status { margin-top: 15px; text-align: center; font-size: 13px; color: #ff9900; }
-
+        
         /* INTERFACE PRINCIPALE TV */
         .sidebar { width: 25%; background-color: #0b0b0b; padding: 20px; border-right: 2px solid #222; height: 100%; overflow-y: auto; }
         .sidebar h2 { font-size: 18px; margin-bottom: 20px; color: #ff9900; text-transform: uppercase; }
@@ -56,27 +54,23 @@
                 <input type="password" id="xp-pass" placeholder="Mot de passe">
             </div>
             <button class="btn-login" onclick="connexionXtream()">Charger l'abonnement</button>
-            <div id="login-status">Entrez vos codes revendeur pour tester.</div>
+            <div id="login-status">Entrez vos codes revendeur.</div>
         </div>
     </div>
 
-    <!-- INTERFACE DE L'APPLICATION -->
+    <!-- INTERFACE TV -->
     <div class="sidebar">
         <h2>Catégories</h2>
-        <div id="categories-container">
-            <p style="color:#666; font-size:13px;">Aucune catégorie chargée.</p>
-        </div>
+        <div id="categories-container"></div>
     </div>
 
     <div class="channel-list">
         <h2>Chaînes</h2>
-        <div id="channels-container">
-            <p style="color:#666; font-size:13px;">Sélectionnez une catégorie.</p>
-        </div>
+        <div id="channels-container"></div>
     </div>
 
     <div class="main-player">
-        <!-- Ajout des attributs muted et controls pour éviter les blocages de sécurité des navigateurs -->
+        <!-- Lecteur configuré avec la barre de contrôles active -->
         <video id="videoPlayer" controls autoplay muted playsinline></video>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
@@ -95,36 +89,26 @@
             username = document.getElementById('xp-user').value.trim();
             password = document.getElementById('xp-pass').value.trim();
 
-            if(!serverUrl || !username || !password) {
-                alert("Veuillez remplir toutes les cases !");
-                return;
-            }
+            if(!serverUrl || !username || !password) { alert("Remplissez les cases !"); return; }
+            document.getElementById('login-status').innerText = "Connexion...";
 
-            document.getElementById('login-status').innerText = "Connexion au serveur en cours...";
-
-            const apiCategories = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
-
-            fetch(apiCategories)
-                .then(response => response.json())
+            // Appel API pour charger les catégories
+            fetch(`${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`)
+                .then(res => res.json())
                 .then(categories => {
                     if (categories && categories.length > 0) {
-                        document.getElementById('login-status').innerText = "Catégories chargées !";
                         afficherCategories(categories);
                         document.getElementById('login-screen').style.display = 'none';
                     } else {
-                        document.getElementById('login-status').innerText = "Erreur : Serveur vide ou codes incorrects.";
+                        document.getElementById('login-status').innerText = "Erreur de codes.";
                     }
                 })
-                .catch(error => {
-                    console.error("Erreur API:", error);
-                    document.getElementById('login-status').innerText = "Erreur. Vérifiez l'URL ou l'accès HTTPS.";
-                });
+                .catch(err => { document.getElementById('login-status').innerText = "Erreur réseau HTTPS."; });
         }
 
         function afficherCategories(categories) {
             const container = document.getElementById('categories-container');
             container.innerHTML = "";
-
             categories.forEach(cat => {
                 const div = document.createElement('div');
                 div.className = "category-item";
@@ -132,61 +116,74 @@
                 div.onclick = () => {
                     document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
                     div.classList.add('active');
-                    chargerChainesDeLaCategorie(cat.category_id);
+                    chargerChaines(cat.category_id);
                 };
                 container.appendChild(div);
             });
         }
 
-        function chargerChainesDeLaCategorie(categoryId) {
+        function chargerChaines(categoryId) {
             const container = document.getElementById('channels-container');
-            container.innerHTML = "<p style='color:#aaa;'>Chargement des chaînes...</p>";
+            container.innerHTML = "<p>Chargement...</p>";
 
-            const apiStreams = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams&category_id=${categoryId}`;
-
-            fetch(apiStreams)
-                .then(response => response.json())
+            fetch(`${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams&category_id=${categoryId}`)
+                .then(res => res.json())
                 .then(streams => {
                     container.innerHTML = "";
-                    if(streams.length === 0) {
-                        container.innerHTML = "<p style='color:#666;'>Aucune chaîne disponible.</p>";
-                        return;
-                    }
-
                     streams.forEach(stream => {
                         const div = document.createElement('div');
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // CORRECTION ESSENTIELLE : Utilisation du format direct universel Xtream (.ts au lieu de .m3u8)
-                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.ts`;
+                            // FORMAT POUR NAVIGATEUR : On force la demande en m3u8 (HLS) mais sans spécifier l'extension finale dans l'URL, ce qui est le standard Xtream Codes web
+                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
                             lancerFluxIPTV(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
-                })
-                .catch(err => {
-                    container.innerHTML = "<p style='color:red;'>Erreur de chargement des flux.</p>";
                 });
         }
 
         function lancerFluxIPTV(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
             
-            // Le format .ts est lu nativement par l'élément vidéo sans avoir besoin du décodeur Hls.js
+            // Nettoyage complet avant relance
             if (hls) {
                 hls.destroy();
-                hls = null;
             }
 
-            video.src = url;
-            video.load();
-            
-            var playPromise = video.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Lecture automatique bloquée. Cliquez manuellement sur PLAY.");
+            // Configuration du player Hls.js avec tolérance de buffering réseau élevée
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60,
+                    enableWorker: true
                 });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play().catch(e => console.log("Clic Play requis"));
+                });
+                
+                // En cas d'erreur de décodage, le lecteur tente une réparation automatique
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                hls.destroy();
+                                break;
+                        }
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() { video.play(); });
             }
         }
     </script>
