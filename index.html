@@ -3,133 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
+    <!-- Moteur vidéo professionnel Hls.js pour lire tes vrais flux IPTV -->
+    <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
         
-        /* ÉCRAN D'ACTIVATION */
+        /* 1. ÉCRAN D'ACTIVATION */
         #activation-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#111; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .activation-box { border: 2px solid #ff9900; padding: 40px; border-radius: 10px; background: #1a1a1a; max-width: 500px; }
         .device-id { font-size: 32px; font-weight: bold; color: #ff9900; letter-spacing: 2px; margin: 20px 0; background: #000; padding: 10px; border-radius: 5px; }
         
-        /* INTERFACE PRINCIPALE TV */
-        .sidebar { width: 20%; background-color: #0b0b0b; padding: 20px; border-right: 2px solid #222; height: 100%; }
+        /* 2. ÉCRAN DE CONNEXION (LOGIN XTREAM CODES) */
+        #login-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#181818; z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .login-box { background: #222; padding: 30px; border-radius: 8px; width: 400px; border-top: 4px solid #ff9900; }
+        .login-box h3 { margin-bottom: 20px; text-align: center; color: #ff9900; text-transform: uppercase; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 12px; color: #aaa; }
+        .input-group input { width: 100%; padding: 10px; background: #111; border: 1px solid #333; color: white; border-radius: 4px; font-size: 14px; }
+        .input-group input:focus { border-color: #ff9900; outline: none; }
+        .btn-login { width: 100%; padding: 12px; background: #ff9900; border: none; color: black; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-login:hover { background: #e0a800; }
+        #login-status { margin-top: 15px; text-align: center; font-size: 13px; color: #ff9900; }
+
+        /* 3. INTERFACE PRINCIPALE TV */
+        .sidebar { width: 25%; background-color: #0b0b0b; padding: 20px; border-right: 2px solid #222; height: 100%; overflow-y: auto; }
         .sidebar h2 { font-size: 18px; margin-bottom: 20px; color: #ff9900; text-transform: uppercase; }
-        .category-item { padding: 12px; margin-bottom: 8px; background: #1c1c1c; border-radius: 5px; cursor: pointer; }
-        .category-item.active { background: #ff9900; color: black; font-weight: bold; }
+        .category-item { padding: 12px; margin-bottom: 8px; background: #1c1c1c; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .category-item:hover, .category-item.active { background: #ff9900; color: black; font-weight: bold; }
         
         .channel-list { width: 30%; background-color: #111; padding: 20px; border-right: 2px solid #222; height: 100%; overflow-y: auto; }
-        .channel-item { padding: 15px; margin-bottom: 8px; background: #1a1a1a; border-radius: 5px; cursor: pointer; display: flex; align-items: center; }
+        .channel-item { padding: 12px; margin-bottom: 8px; background: #1a1a1a; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .channel-item:hover { background: #2a2a2a; border-left: 4px solid #ff9900; }
-        .channel-item img { width: 40px; height: 40px; border-radius: 5px; margin-right: 15px; }
         
-        /* ZONE DU LECTEUR VIDÉO */
-        .main-player { width: 50%; height: 100%; background: black; position: relative; display: flex; align-items: center; justify-content: center; }
-        #canvasPlayer { width: 100%; height: 100%; background: #000; display: none; }
-        .no-signal-text { color: #555; font-size: 20px; text-transform: uppercase; letter-spacing: 2px; position: absolute; }
-        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; z-index: 10; }
-        .player-info h1 { font-size: 24px; color: #ff9900; }
+        .main-player { width: 45%; height: 100%; background: black; position: relative; }
+        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; }
+        .player-info h1 { font-size: 22px; color: #ff9900; }
     </style>
 </head>
 <body>
 
-    <!-- ÉCRAN D'ACTIVATION -->
+    <!-- 1. ÉCRAN D'ACTIVATION (DÉMO 5 SECONDES) -->
     <div id="activation-screen">
         <div class="activation-box">
             <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
             <p style="margin-top: 10px; color: #aaa;">Application en mode démonstration autonome.</p>
             <p style="margin-top: 20px;">Identifiant de votre appareil :</p>
             <div id="display-id" class="device-id">GÉNÉRATION...</div>
-            <p style="font-size: 14px; color: #ff9900;">Déblocage de l'interface dans 5 secondes...</p>
+            <p style="font-size: 14px; color: #ff9900;">Chargement du portail de connexion...</p>
         </div>
     </div>
 
-    <!-- 1. COLONNE DES CATÉGORIES -->
+    <!-- 2. ÉCRAN DE CONNEXION XTREAM CODES -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h3>Connexion Portail</h3>
+            <div class="input-group">
+                <label>URL DU SERVEUR (Doit être HTTPS)</label>
+                <input type="text" id="xp-url" placeholder="https://exemple.com:8080">
+            </div>
+            <div class="input-group">
+                <label>NOM D'UTILISATEUR (Username)</label>
+                <input type="text" id="xp-user" placeholder="Identifiant">
+            </div>
+            <div class="input-group">
+                <label>MOT DE PASSE (Password)</label>
+                <input type="password" id="xp-pass" placeholder="Mot de passe">
+            </div>
+            <button class="btn-login" onclick="connexionXtream()">CHARGER L'ABONNEMENT</button>
+            <div id="login-status">Entrez vos codes revendeur.</div>
+        </div>
+    </div>
+
+    <!-- 3. INTERFACE PRINCIPALE DE L'APPLICATION -->
     <div class="sidebar">
         <h2>Catégories</h2>
-        <div class="category-item active">📺 Chaînes de Test</div>
+        <div id="categories-container">
+            <p style="color:#666; font-size:13px;">Aucune catégorie chargée.</p>
+        </div>
     </div>
 
-    <!-- 2. COLONNE DES CHAÎNES -->
     <div class="channel-list">
-        <div class="channel-item" onclick="lancerFluxFictif('YAPESS SPORT HD')">
-            <img src="https://placeholder.com" alt="Logo">
-            <div>
-                <strong>YAPESS SPORT HD</strong>
-                <p style="font-size: 12px; color: #aaa;">Cliquez pour tester le signal</p>
-            </div>
-        </div>
-        <div class="channel-item" onclick="lancerFluxFictif('YAPESS CINEMA HD')">
-            <img src="https://placeholder.com" alt="Logo">
-            <div>
-                <strong>YAPESS CINEMA HD</strong>
-                <p style="font-size: 12px; color: #aaa;">Cliquez pour tester le signal</p>
-            </div>
+        <h2>Chaînes</h2>
+        <div id="channels-container">
+            <p style="color:#666; font-size:13px;">Sélectionnez une catégorie.</p>
         </div>
     </div>
 
-    <!-- 3. ZONE DU LECTEUR VIDÉO (Simulé par Canvas) -->
     <div class="main-player">
-        <div id="no-signal" class="no-signal-text">Aucun Signal</div>
-        <canvas id="canvasPlayer"></canvas>
+        <video id="videoPlayer" controls autoplay playsinline></video>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
     </div>
 
     <script>
-        // Génération de l'identifiant unique YAPESS
+        // Génération ID Unique
         let myId = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
         document.getElementById('display-id').innerText = myId;
 
-        // Déblocage automatique après 5 secondes
+        // Passage automatique à l'écran de connexion après 5 secondes
         setTimeout(() => {
             document.getElementById('activation-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
         }, 5000);
 
-        // Système d'animation de flux autonome
-        const canvas = document.getElementById('canvasPlayer');
-        const ctx = canvas.getContext('2d');
-        let animationId = null;
-        let couleurFlux = '#ff9900';
+        // Variables globales pour stocker les infos Xtream
+        let serverUrl = "";
+        let username = "";
+        let password = "";
+        const video = document.getElementById('videoPlayer');
+        let hls = null;
 
-        function lancerFluxFictif(nomChaine) {
-            // Masquer le texte "Aucun signal" et afficher le lecteur
-            document.getElementById('no-signal').style.display = 'none';
-            canvas.style.display = 'block';
-            document.getElementById('current-channel-title').innerText = nomChaine;
+        // FONCTION DE CONNEXION AU SERVEUR XTREAM CODES
+        function connexionXtream() {
+            serverUrl = document.getElementById('xp-url').value.trim();
+            username = document.getElementById('xp-user').value.trim();
+            password = document.getElementById('xp-pass').value.trim();
 
-            // Changer la couleur selon la chaîne pour simuler un changement
-            couleurFlux = nomChaine.includes('SPORT') ? '#007bff' : '#e0a800';
-
-            // Ajuster la taille du lecteur
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
-
-            if (animationId) cancelAnimationFrame(animationId);
-            animerLecteur();
-        }
-
-        // Crée une animation d'ondes en direct à l'écran pour simuler la vidéo
-        let angle = 0;
-        function animerLecteur() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.beginPath();
-            ctx.strokeStyle = couleurFlux;
-            ctx.lineWidth = 5;
-
-            ctx.moveTo(0, canvas.height / 2);
-            for (let x = 0; x < canvas.width; x++) {
-                let y = canvas.height / 2 + Math.sin(x * 0.01 + angle) * 50;
-                ctx.lineTo(x, y);
+            if(!serverUrl || !username || !password) {
+                alert("Veuillez remplir toutes les cases !");
+                return;
             }
-            ctx.stroke();
-            angle += 0.05;
 
-            animationId = requestAnimationFrame(animerLecteur);
+            document.getElementById('login-status').innerText = "Connexion au serveur en cours...";
+
+            // Étape 1 : Appel à l'API Xtream pour récupérer les catégories de la TV en direct (Live)
+            const apiCategories = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
+
+            fetch(apiCategories)
+                .then(response => response.json())
+                .then(categories => {
+                    if (categories && categories.length > 0) {
+                        document.getElementById('login-status').innerText = "Catégories récupérées avec succès !";
+                        afficherCategories(categories);
+                        // Fermer l'écran de connexion pour afficher l'appli
+                        setTimeout(() => {
+                            document.getElementById('login-screen').style.display = 'none';
+                        }, 1000);
+                    } else {
+                        document.getElementById('login-status').innerText = "Erreur : Identifiants invalides ou serveur vide.";
+                    }
+                })
+                .catch(error => {
+                    console.error("Erreur de connexion API:", error);
+                    document.getElementById('login-status').innerText = "Erreur de connexion. Vérifiez l'URL ou le HTTPS.";
+                });
         }
-    </script>
-</body>
-</html>
+
+        // AFFICHAGE DES VRAIES CATÉGORIES DU PANEL
+        function afficherCategories(categories) {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = ""; // On nettoie
+
+            categories.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = "category-item";
+                div.innerText = cat.category_name;
+                // Quand on clique sur une catégorie, on charge ses chaînes
+                div.onclick = () => {
+                    // Mettre en surbrillance la catégorie active
+                    document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                    chargerChainesDeLaCategorie(cat.category_id);
+                };
+                container.appendChild(div);
+            });
+        }
+
+        // CHARGEMENT DES CHAÎNES DE LA CATÉGORIE CLIQUÉE
+        function chargerChainesDeLaCategorie(categoryId) {
+            const container = document.getElementById('channels-container');
+            container.innerHTML = "<p style='color:#aaa;'>Chargement des chaînes...</p>";
+
+            const apiStreams = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams&category_id=${categoryId}`;
+
+            fetch(apiStreams)
+                .then(response => response.json())
+                .then(streams => {
+                    container.innerHTML = ""; // Nettoyage
+                    if(streams.length === 0) {
