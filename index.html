@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
-    <!-- Chargement des scripts officiels Google Firebase -->
+    <!-- Version stable sécurisée de Firebase -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
     <!-- Moteur vidéo Hls.js -->
@@ -39,7 +39,7 @@
             <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
             <p style="margin-top: 10px; color: #aaa;">Application non activée ou licence expirée.</p>
             <p style="margin-top: 20px;">Donnez cet identifiant à votre revendeur :</p>
-            <div id="display-id" class="device-id">CHARGEMENT...</div>
+            <div id="display-id" class="device-id">GÉNÉRATION...</div>
             <p id="status-text" style="font-size: 14px; color: #ff9900;">Statut : Connexion à la base sécurisée...</p>
         </div>
     </div>
@@ -63,7 +63,7 @@
     </div>
 
     <script>
-        // Configuration Firebase avec TES clés personnalisées
+        // Configuration Firebase avec TES clés
         const firebaseConfig = {
             apiKey: "AIzaSyC79VkMKj7BEvODYnRl_9BEgxrrIobWMjY",
             authDomain: "yapess-player-pro.firebaseapp.com",
@@ -74,36 +74,51 @@
             measurementId: "G-QKLBX5RHTN"
         };
 
-        // Initialisation de Firebase
-        firebase.initializeApp(firebaseConfig);
+        // Initialisation sécurisée
+        try {
+            firebase.initializeApp(firebaseConfig);
+        } catch(e) {
+            console.log("Firebase déjà initialisé ou erreur");
+        }
         const db = firebase.firestore();
-        let playlistUrl = ""; // Contiendra le lien IPTV du client
+        let playlistUrl = ""; 
 
-        // Vérification de la Licence
+        // Fonction de génération d'ID blindée contre les plantages de mémoire
         function initDevice() {
-            let id = localStorage.getItem('my_tv_license_id');
+            let id = "";
+            try {
+                id = localStorage.getItem('my_tv_license_id');
+            } catch (e) {
+                console.log("Mémoire locale bloquée par le navigateur.");
+            }
+
             if (!id) {
                 id = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-                localStorage.setItem('my_tv_license_id', id);
+                try {
+                    localStorage.setItem('my_tv_license_id', id);
+                } catch (e) {}
             }
+            
+            // On l'affiche tout de suite à l'écran !
             document.getElementById('display-id').innerText = id;
+            document.getElementById('status-text').innerText = "Statut : Vérification de votre licence...";
 
-            // Lecture en temps réel dans Firebase Firestore
+            // Connexion à Firebase
             db.collection("devices").doc(id).get().then((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     if (data.is_active === true) {
-                        playlistUrl = data.playlist_url; // On récupère son lien IPTV
-                        document.getElementById('activation-screen').style.display = 'none'; // On débloque la TV !
+                        playlistUrl = data.playlist_url;
+                        document.getElementById('activation-screen').style.display = 'none'; // Déblocage !
                     } else {
                         document.getElementById('status-text').innerText = "Statut : Licence désactivée ou expirée.";
                     }
                 } else {
-                    document.getElementById('status-text').innerText = "Statut : Non enregistré. En attente d'activation.";
+                    document.getElementById('status-text').innerText = "Statut : En attente d'activation par le revendeur.";
                 }
             }).catch((error) => {
                 console.error("Erreur Firebase:", error);
-                document.getElementById('status-text').innerText = "Erreur de connexion. Vérifiez internet.";
+                document.getElementById('status-text').innerText = "Erreur de connexion. Vérifiez internet ou vos règles Firebase.";
             });
         }
 
@@ -124,7 +139,12 @@
             }
         }
 
-        window.onload = initDevice;
+        // Sécurité ultime pour lancer le script au chargement
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDevice);
+        } else {
+            initDevice();
+        }
     </script>
 </body>
 </html>
