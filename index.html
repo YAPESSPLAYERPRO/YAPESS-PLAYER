@@ -31,7 +31,7 @@
 </head>
 <body>
 
-    <!-- ÉCRAN D'ACTIVATION -->
+    <!-- ÉCRAN D'ACTIVATION (Disparaît après 5 secondes pour ce test) -->
     <div id="activation-screen">
         <div class="activation-box">
             <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
@@ -50,11 +50,11 @@
 
     <!-- 2. COLONNE DES CHAÎNES -->
     <div class="channel-list">
-        <!-- Utilisation d'un fichier MP4 standard universel pour le test de lecture -->
-        <div class="channel-item" onclick="changerChaine('https://googleapis.com', 'YAPESS DEMO HD')">
+        <!-- Lien vidéo officiel W3Schools configuré avec le bon type MIME pour Firefox -->
+        <div class="channel-item" onclick="changerChaine('https://w3schools.com', 'YAPESS DEMO TV')">
             <img src="https://placeholder.com" alt="Logo">
             <div>
-                <strong>YAPESS DEMO HD</strong>
+                <strong>YAPESS DEMO TV</strong>
                 <p style="font-size: 12px; color: #aaa;">Cliquez ici pour tester la vidéo</p>
             </div>
         </div>
@@ -62,7 +62,7 @@
 
     <!-- 3. ZONE DU LECTEUR VIDÉO -->
     <div class="main-player">
-        <video id="videoPlayer" controls autoplay playsinline></video>
+        <video id="videoPlayer" controls autoplay muted playsinline></video>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
@@ -78,20 +78,21 @@
             document.getElementById('activation-screen').style.display = 'none';
         }, 5000);
 
-        // Code de lecture universel (MP4 natif direct)
+        // Code de lecture
         const video = document.getElementById('videoPlayer');
 
         function changerChaine(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
             
-            // Changement direct de la source vidéo sans passer par un script tiers
+            // On force la source vidéo
             video.src = url;
             video.load();
             
+            // Lancement forcé
             var playPromise = video.play();
             if (playPromise !== undefined) {
                 playPromise.catch(error => {
-                    console.log("Lecture bloquée. Clic manuel requis sur le bouton PLAY de la vidéo.");
+                    console.log("Lecture auto bloquée, cliquez manuellement sur PLAY.");
                 });
             }
         }
