@@ -9,7 +9,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
         
-        /* ÉCRAN DE CONNEXION DIRECT (Affiche en premier) */
+        /* ÉCRAN DE CONNEXION DIRECT */
         #login-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#181818; z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .login-box { background: #222; padding: 30px; border-radius: 8px; width: 400px; border-top: 4px solid #ff9900; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .login-box h3 { margin-bottom: 20px; text-align: center; color: #ff9900; text-transform: uppercase; letter-spacing: 1px; }
@@ -39,7 +39,7 @@
 </head>
 <body>
 
-    <!-- PORTAIL DE CONNEXION XTREAM CODES DIRECT -->
+    <!-- PORTAIL DE CONNEXION -->
     <div id="login-screen">
         <div class="login-box">
             <h3>YAPESS PLAYER PRO</h3>
@@ -76,7 +76,8 @@
     </div>
 
     <div class="main-player">
-        <video id="videoPlayer" controls autoplay playsinline></video>
+        <!-- Ajout des attributs muted et controls pour éviter les blocages de sécurité des navigateurs -->
+        <video id="videoPlayer" controls autoplay muted playsinline></video>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
@@ -89,7 +90,6 @@
         const video = document.getElementById('videoPlayer');
         let hls = null;
 
-        // FONCTION DE CONNEXION AU SERVEUR XTREAM CODES
         function connexionXtream() {
             serverUrl = document.getElementById('xp-url').value.trim();
             username = document.getElementById('xp-user').value.trim();
@@ -102,7 +102,6 @@
 
             document.getElementById('login-status').innerText = "Connexion au serveur en cours...";
 
-            // Récupération des catégories Live via l'API Xtream Codes
             const apiCategories = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
 
             fetch(apiCategories)
@@ -111,7 +110,6 @@
                     if (categories && categories.length > 0) {
                         document.getElementById('login-status').innerText = "Catégories chargées !";
                         afficherCategories(categories);
-                        // Cacher le formulaire de connexion pour afficher l'interface de streaming
                         document.getElementById('login-screen').style.display = 'none';
                     } else {
                         document.getElementById('login-status').innerText = "Erreur : Serveur vide ou codes incorrects.";
@@ -123,7 +121,6 @@
                 });
         }
 
-        // AFFICHAGE DES CATÉGORIES
         function afficherCategories(categories) {
             const container = document.getElementById('categories-container');
             container.innerHTML = "";
@@ -141,7 +138,6 @@
             });
         }
 
-        // CHARGEMENT DES CHAÎNES
         function chargerChainesDeLaCategorie(categoryId) {
             const container = document.getElementById('channels-container');
             container.innerHTML = "<p style='color:#aaa;'>Chargement des chaînes...</p>";
@@ -162,8 +158,8 @@
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // Génération du lien de streaming direct Xtream Codes (.m3u8)
-                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
+                            // CORRECTION ESSENTIELLE : Utilisation du format direct universel Xtream (.ts au lieu de .m3u8)
+                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.ts`;
                             lancerFluxIPTV(streamUrl, stream.name);
                         };
                         container.appendChild(div);
@@ -174,22 +170,22 @@
                 });
         }
 
-        // LECTURE DU FLUX VIDÉO
         function lancerFluxIPTV(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
-            if (hls) hls.destroy();
+            
+            // Le format .ts est lu nativement par l'élément vidéo sans avoir besoin du décodeur Hls.js
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
 
-            if (Hls.isSupported()) {
-                hls = new Hls();
-                hls.loadSource(url);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play().catch(e => console.log("Lecture manuelle requise"));
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.addEventListener('loadedmetadata', function() {
-                    video.play();
+            video.src = url;
+            video.load();
+            
+            var playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Lecture automatique bloquée. Cliquez manuellement sur PLAY.");
                 });
             }
         }
