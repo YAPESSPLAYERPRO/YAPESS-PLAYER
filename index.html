@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
-    <!-- Scripts stables Firebase -->
+    <!-- Chargement des scripts stables officiels de Google -->
     <script src="https://gstatic.com"></script>
     <script src="https://gstatic.com"></script>
     <!-- Moteur vidéo Hls.js -->
@@ -36,12 +35,12 @@
             <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
             <p style="margin-top: 10px; color: #aaa;">Application non activée ou licence expirée.</p>
             <p style="margin-top: 20px;">Donnez cet identifiant à votre revendeur :</p>
-            <div id="display-id" class="device-id">CRÉATION...</div>
-            <p id="status-text" style="font-size: 14px; color: #ff9900;">Statut : Initialisation du système...</p>
+            <div id="display-id" class="device-id">GÉNÉRATION...</div>
+            <p id="status-text" style="font-size: 14px; color: #ff9900;">Vérification de la licence...</p>
         </div>
     </div>
 
-    <!-- APPLICATION -->
+    <!-- RESTE DE L'APPLICATION -->
     <div class="sidebar">
         <h2>Catégories</h2>
         <div class="category-item active">🇫🇷 France LIGHT</div>
@@ -60,7 +59,7 @@
     </div>
 
     <script>
-        // Tes clés Firebase officielles
+        // Configuration de TES clés d'origine Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyC79VkMKj7BEvODYnRl_9BEgxrrIobWMjY",
             authDomain: "://firebaseapp.com",
@@ -71,38 +70,49 @@
             measurementId: "G-QKLBX5RHTN"
         };
 
-        // Lancement immédiat de la création de l'ID sans attendre Firebase
-        let myId = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        // Création ou récupération de l'ID unique
+        let myId = "";
         try {
-            if(!localStorage.getItem('my_tv_license_id')) {
+            myId = localStorage.getItem('my_tv_license_id');
+        } catch(e) {}
+
+        if (!myId) {
+            myId = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+            try {
                 localStorage.setItem('my_tv_license_id', myId);
-            } else {
-                myId = localStorage.getItem('my_tv_license_id');
-            }
-        } catch(e) { console.log("LocalStorage bloqué"); }
+            } catch(e) {}
+        }
 
-        // On force l'affichage immédiat du code YAPESS à l'écran
+        // Affichage instantané du code
         document.getElementById('display-id').innerText = myId;
-        document.getElementById('status-text').innerText = "Vérification de la licence sur Firebase...";
 
-        // Connexion à Firebase
+        // Connexion sécurisée
         try {
             firebase.initializeApp(firebaseConfig);
             const db = firebase.firestore();
             let playlistUrl = "";
 
-            db.collection("devices").doc(myId).get().then((doc) => {
-                if (doc.exists && doc.data().is_active === true) {
-                    playlistUrl = doc.data().playlist_url;
-                    document.getElementById('activation-screen').style.display = 'none';
+            // Écoute en temps réel de ton document dans Firebase
+            db.collection("devices").doc(myId).onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.is_active === true) {
+                        playlistUrl = data.playlist_url;
+                        document.getElementById('activation-screen').style.display = 'none'; // ON DÉBLOQUE !
+                    } else {
+                        document.getElementById('status-text').innerText = "Statut : Licence désactivée ou expirée.";
+                    }
                 } else {
-                    document.getElementById('status-text').innerText = "En attente d'activation par le revendeur.";
+                    document.getElementById('status-text').innerText = "Statut : En attente d'activation dans le panel.";
                 }
-            }).catch((err) => {
-                document.getElementById('status-text').innerText = "Mode autonome. En attente du panel.";
+            }, (error) => {
+                console.error("Erreur de lecture Firestore:", error);
+                document.getElementById('status-text').innerText = "Erreur de connexion base. Vérifie les Rules.";
             });
+
         } catch(e) {
-            document.getElementById('status-text').innerText = "Erreur Firebase. Vérifiez la configuration.";
+            console.error("Erreur d'initialisation Firebase:", e);
+            document.getElementById('status-text').innerText = "Erreur d'initialisation Firebase.";
         }
 
         // Lecteur vidéo
