@@ -23,9 +23,11 @@
         .channel-item:hover { background: #2a2a2a; border-left: 4px solid #ff9900; }
         .channel-item img { width: 40px; height: 40px; border-radius: 5px; margin-right: 15px; }
         
-        .main-player { width: 50%; height: 100%; background: black; position: relative; }
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; }
+        /* ZONE DU LECTEUR VIDÉO */
+        .main-player { width: 50%; height: 100%; background: black; position: relative; display: flex; align-items: center; justify-content: center; }
+        #canvasPlayer { width: 100%; height: 100%; background: #000; display: none; }
+        .no-signal-text { color: #555; font-size: 20px; text-transform: uppercase; letter-spacing: 2px; position: absolute; }
+        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; z-index: 10; }
         .player-info h1 { font-size: 24px; color: #ff9900; }
     </style>
 </head>
@@ -50,19 +52,26 @@
 
     <!-- 2. COLONNE DES CHAÎNES -->
     <div class="channel-list">
-        <!-- On lance une fonction spéciale pour la démo locale -->
-        <div class="channel-item" onclick="lancerVideoDemo()">
+        <div class="channel-item" onclick="lancerFluxFictif('YAPESS SPORT HD')">
             <img src="https://placeholder.com" alt="Logo">
             <div>
-                <strong>YAPESS DEMO TV</strong>
-                <p style="font-size: 12px; color: #aaa;">Cliquez ici pour tester la vidéo</p>
+                <strong>YAPESS SPORT HD</strong>
+                <p style="font-size: 12px; color: #aaa;">Cliquez pour tester le signal</p>
+            </div>
+        </div>
+        <div class="channel-item" onclick="lancerFluxFictif('YAPESS CINEMA HD')">
+            <img src="https://placeholder.com" alt="Logo">
+            <div>
+                <strong>YAPESS CINEMA HD</strong>
+                <p style="font-size: 12px; color: #aaa;">Cliquez pour tester le signal</p>
             </div>
         </div>
     </div>
 
-    <!-- 3. ZONE DU LECTEUR VIDÉO -->
+    <!-- 3. ZONE DU LECTEUR VIDÉO (Simulé par Canvas) -->
     <div class="main-player">
-        <video id="videoPlayer" controls autoplay muted playsinline></video>
+        <div id="no-signal" class="no-signal-text">Aucun Signal</div>
+        <canvas id="canvasPlayer"></canvas>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
@@ -78,17 +87,48 @@
             document.getElementById('activation-screen').style.display = 'none';
         }, 5000);
 
-        const video = document.getElementById('videoPlayer');
+        // Système d'animation de flux autonome
+        const canvas = document.getElementById('canvasPlayer');
+        const ctx = canvas.getContext('2d');
+        let animationId = null;
+        let couleurFlux = '#ff9900';
 
-        // Cette fonction charge une mini-animation de test stockée directement en texte dans le code
-        // Blindée à 100% contre le blocage MIME et les erreurs de serveurs externes
-        function lancerVideoDemo() {
-            document.getElementById('current-channel-title').innerText = 'YAPESS DEMO TV';
-            
-            // Une mini-vidéo de 1 seconde (un carré blanc clignotant) encodée en Base64 natif
-            video.src = "data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wZDxtcDQyAG1zdgAAAChidm1hAAAAAnBhc3MAAAAAYm1mcmEAAAAAEW1mcm8AAAAAAAAD6G1vb3YAAABsbXZoZAAAAADRxZpY0cWaWAAAA+gAAn70AAEAAAEAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAB1dHJhawAAXHRraGQAAAAA0cWaWNHFmlgAAAABAAAAAAAAnvQAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAm1kaWEAAABsbWRoZAAAAADRxZpY0cWaWAAAA+gAAn70VUhgAAAAAAAAMWhkaXJrAAAAbXA0YgAAAABkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAxtdXJsAAAAAQAAAhRzdGJsAAAAXHN0c2QAAAAAAAAAAQAAAExtcDR2AAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABgAGABpY29uAAAAAABhdmMxAAAAAAABAAAAFmF2Y0MBQAL/4QAYYXZjQwH0AAv/wAAB9AAIAAAD6AAAAAAAE2NvbHJuY2xjAAEAAQABAAAAIHN0dHMAAAAAAAAAAQAAAAEAAAPoAAAAEHN0c3MAAAAAAAAAAQAAAAEAAAAcc3RzYwAAAAAAAAABAAAAAQAAAAEAAAABAAAAFHN0c3oAAAAAAAAAAAAAAAIAAAPoAAAAFHN0Y28AAAAAAAAAAQAAADAAAABkdXVpZOfbe46as489vY3c78C89ccAAABcbXZleAAAAAB0cmV4AAAAAAAAAAEAAAABAAAAAAAD6AAAAAAAAn70AAAAAABtZnVkAAAAAAGVbWRhdA==";
-            video.load();
-            video.play().catch(e => console.log("Lecture auto bloquée"));
+        function lancerFluxFictif(nomChaine) {
+            // Masquer le texte "Aucun signal" et afficher le lecteur
+            document.getElementById('no-signal').style.display = 'none';
+            canvas.style.display = 'block';
+            document.getElementById('current-channel-title').innerText = nomChaine;
+
+            // Changer la couleur selon la chaîne pour simuler un changement
+            couleurFlux = nomChaine.includes('SPORT') ? '#007bff' : '#e0a800';
+
+            // Ajuster la taille du lecteur
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+
+            if (animationId) cancelAnimationFrame(animationId);
+            animerLecteur();
+        }
+
+        // Crée une animation d'ondes en direct à l'écran pour simuler la vidéo
+        let angle = 0;
+        function animerLecteur() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.beginPath();
+            ctx.strokeStyle = couleurFlux;
+            ctx.lineWidth = 5;
+
+            ctx.moveTo(0, canvas.height / 2);
+            for (let x = 0; x < canvas.width; x++) {
+                let y = canvas.height / 2 + Math.sin(x * 0.01 + angle) * 50;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            angle += 0.05;
+
+            animationId = requestAnimationFrame(animerLecteur);
         }
     </script>
 </body>
