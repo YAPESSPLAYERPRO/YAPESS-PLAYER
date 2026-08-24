@@ -1,1 +1,122 @@
 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>YAPESS PLAYER Premium</title>
+    <!-- Scripts stables Firebase -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+    <!-- Moteur vidéo Hls.js -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
+        #activation-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; background:#111; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .activation-box { border: 2px solid #ff9900; padding: 40px; border-radius: 10px; background: #1a1a1a; max-width: 500px; }
+        .device-id { font-size: 32px; font-weight: bold; color: #ff9900; letter-spacing: 2px; margin: 20px 0; background: #000; padding: 10px; border-radius: 5px; }
+        .sidebar { width: 20%; background-color: #0b0b0b; padding: 20px; border-right: 2px solid #222; height: 100%; }
+        .sidebar h2 { font-size: 18px; margin-bottom: 20px; color: #ff9900; text-transform: uppercase; }
+        .category-item { padding: 12px; margin-bottom: 8px; background: #1c1c1c; border-radius: 5px; cursor: pointer; }
+        .category-item.active { background: #ff9900; color: black; font-weight: bold; }
+        .channel-list { width: 30%; background-color: #111; padding: 20px; border-right: 2px solid #222; height: 100%; overflow-y: auto; }
+        .channel-item { padding: 15px; margin-bottom: 8px; background: #1a1a1a; border-radius: 5px; cursor: pointer; display: flex; align-items: center; }
+        .channel-item img { width: 40px; height: 40px; border-radius: 5px; margin-right: 15px; }
+        .main-player { width: 50%; height: 100%; background: black; position: relative; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; }
+        .player-info h1 { font-size: 24px; color: #ff9900; }
+    </style>
+</head>
+<body>
+
+    <!-- ÉCRAN D'ACTIVATION BLINDÉ -->
+    <div id="activation-screen">
+        <div class="activation-box">
+            <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
+            <p style="margin-top: 10px; color: #aaa;">Application non activée ou licence expirée.</p>
+            <p style="margin-top: 20px;">Donnez cet identifiant à votre revendeur :</p>
+            <div id="display-id" class="device-id">CRÉATION...</div>
+            <p id="status-text" style="font-size: 14px; color: #ff9900;">Statut : Initialisation du système...</p>
+        </div>
+    </div>
+
+    <!-- APPLICATION -->
+    <div class="sidebar">
+        <h2>Catégories</h2>
+        <div class="category-item active">🇫🇷 France LIGHT</div>
+    </div>
+
+    <div class="channel-list">
+        <div class="channel-item" onclick="changerChaine(playlistUrl, 'TF1 HD')">
+            <img src="https://placeholder.com" alt="Logo">
+            <div><strong>TF1 HD</strong><p style="font-size: 12px; color: #aaa;">Flux activé par le revendeur</p></div>
+        </div>
+    </div>
+
+    <div class="main-player">
+        <video id="videoPlayer" autoplay controls></video>
+        <div class="player-info"><h1 id="current-channel-title">Sélectionnez une chaîne</h1></div>
+    </div>
+
+    <script>
+        // Tes clés Firebase officielles
+        const firebaseConfig = {
+            apiKey: "AIzaSyC79VkMKj7BEvODYnRl_9BEgxrrIobWMjY",
+            authDomain: "://firebaseapp.com",
+            projectId: "yapess-player-pro",
+            storageBucket: "yapess-player-pro.firebasestorage.app",
+            messagingSenderId: "1073719899008",
+            appId: "1:1073719899008:web:50a65b212119a831330765",
+            measurementId: "G-QKLBX5RHTN"
+        };
+
+        // Lancement immédiat de la création de l'ID sans attendre Firebase
+        let myId = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        try {
+            if(!localStorage.getItem('my_tv_license_id')) {
+                localStorage.setItem('my_tv_license_id', myId);
+            } else {
+                myId = localStorage.getItem('my_tv_license_id');
+            }
+        } catch(e) { console.log("LocalStorage bloqué"); }
+
+        // On force l'affichage immédiat du code YAPESS à l'écran
+        document.getElementById('display-id').innerText = myId;
+        document.getElementById('status-text').innerText = "Vérification de la licence sur Firebase...";
+
+        // Connexion à Firebase
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            let playlistUrl = "";
+
+            db.collection("devices").doc(myId).get().then((doc) => {
+                if (doc.exists && doc.data().is_active === true) {
+                    playlistUrl = doc.data().playlist_url;
+                    document.getElementById('activation-screen').style.display = 'none';
+                } else {
+                    document.getElementById('status-text').innerText = "En attente d'activation par le revendeur.";
+                }
+            }).catch((err) => {
+                document.getElementById('status-text').innerText = "Mode autonome. En attente du panel.";
+            });
+        } catch(e) {
+            document.getElementById('status-text').innerText = "Erreur Firebase. Vérifiez la configuration.";
+        }
+
+        // Lecteur vidéo
+        const video = document.getElementById('videoPlayer');
+        let hls = null;
+        function changerChaine(url, nomChaine) {
+            if (!url) return;
+            document.getElementById('current-channel-title').innerText = nomChaine;
+            if (hls) hls.destroy();
+            if (Hls.isSupported()) {
+                hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+            }
+        }
+    </script>
+</body>
+</html>
