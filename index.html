@@ -3,9 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
-    <!-- Chargement des scripts stables officiels de Google -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
     <!-- Moteur vidéo Hls.js -->
     <script src="https://jsdelivr.net"></script>
     <style>
@@ -29,27 +26,28 @@
 </head>
 <body>
 
-    <!-- ÉCRAN D'ACTIVATION BLINDÉ -->
+    <!-- ÉCRAN D'ACTIVATION DEMO -->
     <div id="activation-screen">
         <div class="activation-box">
             <h2 style="color: #ff9900;">YAPESS PLAYER Premium</h2>
-            <p style="margin-top: 10px; color: #aaa;">Application non activée ou licence expirée.</p>
-            <p style="margin-top: 20px;">Donnez cet identifiant à votre revendeur :</p>
+            <p style="margin-top: 10px; color: #aaa;">Application en mode démonstration.</p>
+            <p style="margin-top: 20px;">Identifiant de l'appareil :</p>
             <div id="display-id" class="device-id">GÉNÉRATION...</div>
-            <p id="status-text" style="font-size: 14px; color: #ff9900;">Vérification de la licence...</p>
+            <p id="status-text" style="font-size: 14px; color: #ff9900;">Déblocage automatique de l'application dans 5 secondes...</p>
         </div>
     </div>
 
-    <!-- RESTE DE L'APPLICATION -->
+    <!-- APPLICATION PRINCIPALE -->
     <div class="sidebar">
         <h2>Catégories</h2>
         <div class="category-item active">🇫🇷 France LIGHT</div>
     </div>
 
     <div class="channel-list">
-        <div class="channel-item" onclick="changerChaine(playlistUrl, 'TF1 HD')">
+        <!-- Quand on clique sur cette case, ça lance la vidéo de test -->
+        <div class="channel-item" onclick="changerChaine('https://mux.dev', 'TF1 HD')">
             <img src="https://placeholder.com" alt="Logo">
-            <div><strong>TF1 HD</strong><p style="font-size: 12px; color: #aaa;">Flux activé par le revendeur</p></div>
+            <div><strong>TF1 HD</strong><p style="font-size: 12px; color: #aaa;">Cliquez pour regarder le direct</p></div>
         </div>
     </div>
 
@@ -59,72 +57,35 @@
     </div>
 
     <script>
-        // Configuration de TES clés d'origine Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyC79VkMKj7BEvODYnRl_9BEgxrrIobWMjY",
-            authDomain: "://firebaseapp.com",
-            projectId: "yapess-player-pro",
-            storageBucket: "yapess-player-pro.firebasestorage.app",
-            messagingSenderId: "1073719899008",
-            appId: "1:1073719899008:web:50a65b212119a831330765",
-            measurementId: "G-QKLBX5RHTN"
-        };
-
-        // Création ou récupération de l'ID unique
-        let myId = "";
-        try {
-            myId = localStorage.getItem('my_tv_license_id');
-        } catch(e) {}
-
-        if (!myId) {
-            myId = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-            try {
-                localStorage.setItem('my_tv_license_id', myId);
-            } catch(e) {}
-        }
-
-        // Affichage instantané du code
+        // Génération de l'ID unique YAPESS
+        let myId = 'YAPESS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
         document.getElementById('display-id').innerText = myId;
 
-        // Connexion sécurisée
-        try {
-            firebase.initializeApp(firebaseConfig);
-            const db = firebase.firestore();
-            let playlistUrl = "";
+        // Simulation de déblocage : après 5 secondes, l'écran noir disparaît !
+        setTimeout(() => {
+            document.getElementById('activation-screen').style.display = 'none';
+        }, 5000);
 
-            // Écoute en temps réel de ton document dans Firebase
-            db.collection("devices").doc(myId).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    if (data.is_active === true) {
-                        playlistUrl = data.playlist_url;
-                        document.getElementById('activation-screen').style.display = 'none'; // ON DÉBLOQUE !
-                    } else {
-                        document.getElementById('status-text').innerText = "Statut : Licence désactivée ou expirée.";
-                    }
-                } else {
-                    document.getElementById('status-text').innerText = "Statut : En attente d'activation dans le panel.";
-                }
-            }, (error) => {
-                console.error("Erreur de lecture Firestore:", error);
-                document.getElementById('status-text').innerText = "Erreur de connexion base. Vérifie les Rules.";
-            });
-
-        } catch(e) {
-            console.error("Erreur d'initialisation Firebase:", e);
-            document.getElementById('status-text').innerText = "Erreur d'initialisation Firebase.";
-        }
-
-        // Lecteur vidéo
+        // Moteur de lecture vidéo
         const video = document.getElementById('videoPlayer');
         let hls = null;
+
         function changerChaine(url, nomChaine) {
-            if (!url) return;
             document.getElementById('current-channel-title').innerText = nomChaine;
             if (hls) hls.destroy();
+            
             if (Hls.isSupported()) {
-                hls = new Hls(); hls.loadSource(url); hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() { video.play(); });
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() { 
+                    video.play(); 
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() { 
+                    video.play(); 
+                });
             }
         }
     </script>
