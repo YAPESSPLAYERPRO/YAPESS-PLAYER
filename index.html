@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
+    <!-- CHARGEMENT DU LECTEUR HOLLYWOODIEN VIDEO.JS (STABLE ET UNIVERSEL) -->
+    <link href="https://zencdn.net" rel="stylesheet" />
+    <script src="https://zencdn.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
@@ -28,9 +31,10 @@
         .channel-item { padding: 12px; margin-bottom: 8px; background: #1a1a1a; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .channel-item:hover { background: #2a2a2a; border-left: 4px solid #ff9900; }
         
-        .main-player { width: 45%; height: 100%; background: black; position: relative; }
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; }
+        /* ZONE DU PLAYER */
+        .main-player { width: 45%; height: 100%; background: black; position: relative; display: flex; align-items: center; justify-content: center; }
+        .video-js { width: 100% !important; height: 100% !important; }
+        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; z-index: 10; }
         .player-info h1 { font-size: 22px; color: #ff9900; }
     </style>
 </head>
@@ -68,9 +72,9 @@
         <div id="channels-container"></div>
     </div>
 
+    <!-- ZONE DU NOUVEAU PLAYER INTÉLLIGENT -->
     <div class="main-player">
-        <!-- LECTEUR HTML5 PUR -->
-        <video id="videoPlayer" controls autoplay name="media"></video>
+        <video id="yapessPlayer" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto" poster=""></video>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
@@ -80,7 +84,19 @@
         let serverUrl = "";
         let username = "";
         let password = "";
-        const video = document.getElementById('videoPlayer');
+        
+        // Initialisation de Video.js avec gestion automatique du streaming de flux hls/m3u8
+        const player = videojs('yapessPlayer', {
+            fluid: false,
+            autoplay: true,
+            muted: true, // Obligatoire pour forcer le démarrage sur Chrome/Firefox
+            controls: true,
+            html5: {
+                vhs: { overrideNative: true },
+                nativeAudioTracks: false,
+                nativeVideoTracks: false
+            }
+        });
 
         function connexionXtream() {
             serverUrl = document.getElementById('xp-url').value.trim();
@@ -132,29 +148,27 @@
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // CORRECTION HTML5 PURE : URL brute sans aucune extension (.m3u8 ou .ts) au bout
-                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}`;
-                            lancerFluxHTML5(streamUrl, stream.name);
+                            // On repasse sur l'URL officielle Xtream Codes qui force le transcodage en flux direct
+                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
+                            lancerFluxPro(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
                 });
         }
 
-        function lancerFluxHTML5(url, nomChaine) {
+        function lancerFluxPro(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
             
-            // Injection directe dans la balise vidéo HTML5
-            video.src = url;
-            video.load();
-            
-            // Forcer le lancement
-            var playPromise = video.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Lecture automatique bloquée par le navigateur. Clic manuel requis.");
-                });
-            }
+            // Injection de la source avec le type MIME exact exigé par Video.js pour le streaming
+            player.src({
+                src: url,
+                type: 'application/x-mpegURL'
+            });
+
+            player.ready(function() {
+                player.play();
+            });
         }
     </script>
 </body>
