@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
-    <!-- MOTEUR DE LECTURE PROFESSIONNEL RE-CONFIGURÉ -->
-    <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
@@ -18,6 +16,7 @@
         .input-group input { width: 100%; padding: 12px; background: #111; border: 1px solid #333; color: white; border-radius: 4px; font-size: 14px; }
         .input-group input:focus { border-color: #ff9900; outline: none; }
         .btn-login { width: 100%; padding: 14px; background: #ff9900; border: none; color: black; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; text-transform: uppercase; }
+        #login-status { margin-top: 15px; text-align: center; font-size: 13px; color: #ff9900; }
         
         /* INTERFACE PRINCIPALE TV */
         .sidebar { width: 25%; background-color: #0b0b0b; padding: 20px; border-right: 2px solid #222; height: 100%; overflow-y: auto; }
@@ -70,8 +69,8 @@
     </div>
 
     <div class="main-player">
-        <!-- Lecteur configuré avec la barre de contrôles active -->
-        <video id="videoPlayer" controls autoplay muted playsinline></video>
+        <!-- LECTEUR HTML5 PUR -->
+        <video id="videoPlayer" controls autoplay name="media"></video>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
@@ -82,7 +81,6 @@
         let username = "";
         let password = "";
         const video = document.getElementById('videoPlayer');
-        let hls = null;
 
         function connexionXtream() {
             serverUrl = document.getElementById('xp-url').value.trim();
@@ -92,7 +90,6 @@
             if(!serverUrl || !username || !password) { alert("Remplissez les cases !"); return; }
             document.getElementById('login-status').innerText = "Connexion...";
 
-            // Appel API pour charger les catégories
             fetch(`${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`)
                 .then(res => res.json())
                 .then(categories => {
@@ -135,55 +132,28 @@
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // FORMAT POUR NAVIGATEUR : On force la demande en m3u8 (HLS) mais sans spécifier l'extension finale dans l'URL, ce qui est le standard Xtream Codes web
-                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
-                            lancerFluxIPTV(streamUrl, stream.name);
+                            // CORRECTION HTML5 PURE : URL brute sans aucune extension (.m3u8 ou .ts) au bout
+                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}`;
+                            lancerFluxHTML5(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
                 });
         }
 
-        function lancerFluxIPTV(url, nomChaine) {
+        function lancerFluxHTML5(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
             
-            // Nettoyage complet avant relance
-            if (hls) {
-                hls.destroy();
-            }
-
-            // Configuration du player Hls.js avec tolérance de buffering réseau élevée
-            if (Hls.isSupported()) {
-                hls = new Hls({
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 60,
-                    enableWorker: true
+            // Injection directe dans la balise vidéo HTML5
+            video.src = url;
+            video.load();
+            
+            // Forcer le lancement
+            var playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Lecture automatique bloquée par le navigateur. Clic manuel requis.");
                 });
-                hls.loadSource(url);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play().catch(e => console.log("Clic Play requis"));
-                });
-                
-                // En cas d'erreur de décodage, le lecteur tente une réparation automatique
-                hls.on(Hls.Events.ERROR, function (event, data) {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                hls.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                hls.recoverMediaError();
-                                break;
-                            default:
-                                hls.destroy();
-                                break;
-                        }
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.addEventListener('loadedmetadata', function() { video.play(); });
             }
         }
     </script>
