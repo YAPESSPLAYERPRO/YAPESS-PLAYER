@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
-    <!-- Moteur vidéo stable Video.js -->
+    <!-- Chargement de Video.js -->
     <link href="https://zencdn.net" rel="stylesheet" />
     <script src="https://zencdn.net"></script>
     <style>
@@ -85,8 +85,8 @@
         let username = "";
         let password = "";
         
-        // Proxy public gratuit pour casser les blocages de sécurité CORS/Mixed Content
-        const proxyUrl = "";
+        // Proxy alternatif pour injecter les autorisations CORS manquantes sur les requêtes data
+        const proxyDataUrl = "https://allorigins.win";
 
         const player = videojs('yapessPlayer', {
             autoplay: true,
@@ -103,12 +103,13 @@
             if(!serverUrl || !username || !password) { alert("Remplissez les cases !"); return; }
             document.getElementById('login-status').innerText = "Connexion...";
 
-            // On fait passer la requête API par le proxy pour éviter le blocage CORS
             const targetUrl = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
             
-            fetch(proxyUrl + encodeURIComponent(targetUrl))
+            // Appel via AllOrigins qui encapsule la réponse JSON proprement
+            fetch(proxyDataUrl + encodeURIComponent(targetUrl))
                 .then(res => res.json())
-                .then(categories => {
+                .then(wrapper => {
+                    const categories = JSON.parse(wrapper.contents);
                     if (categories && categories.length > 0) {
                         afficherCategories(categories);
                         document.getElementById('login-screen').style.display = 'none';
@@ -116,15 +117,15 @@
                         document.getElementById('login-status').innerText = "Erreur de codes.";
                     }
                 })
-                .catch(err => { 
-                    // Si le proxy bloque, on tente en direct au cas où
+                .catch(err => {
+                    // Repli direct
                     fetch(targetUrl)
                         .then(res => res.json())
                         .then(categories => {
                             afficherCategories(categories);
                             document.getElementById('login-screen').style.display = 'none';
                         })
-                        .catch(e => { document.getElementById('login-status').innerText = "Erreur de sécurité réseau CORS."; });
+                        .catch(e => { document.getElementById('login-status').innerText = "Sécurité CORS active. Essayez sur votre TV Smart."; });
                 });
         }
 
@@ -150,39 +151,41 @@
 
             const targetUrl = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams&category_id=${categoryId}`;
 
-            fetch(proxyUrl + encodeURIComponent(targetUrl))
+            fetch(proxyDataUrl + encodeURIComponent(targetUrl))
                 .then(res => res.json())
-                .then(streams => {
+                .then(wrapper => {
+                    const streams = JSON.parse(wrapper.contents);
                     container.innerHTML = "";
                     streams.forEach(stream => {
                         const div = document.createElement('div');
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // Demande formelle du format m3u8 (HLS)
                             const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
                             lancerFluxPro(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
+                })
+                .catch(err => {
+                    // Tente en direct au cas où
+                    fetch(targetUrl)
+                        .then(res => res.json())
+                        .then(streams => {
+                            container.innerHTML = "";
+                            streams.forEach(stream => {
+                                const div = document.createElement('div');
+                                div.className = "channel-item";
+                                div.innerText = stream.name;
+                                div.onclick = () => {
+                                    const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
+                                    lancerFluxPro(streamUrl, stream.name);
+                                };
+                                container.appendChild(div);
+                            });
+                        })
+                        .catch(e => { container.innerHTML = "<p style='color:red;'>Erreur CORS de chargement sur ce navigateur.</p>"; });
                 });
         }
 
         function lancerFluxPro(url, nomChaine) {
-            document.getElementById('current-channel-title').innerText = nomChaine;
-            
-            // ÉTAPE CLÉ : On injecte l'URL du flux à travers le proxy de sécurité
-            const secureStreamUrl = proxyUrl + encodeURIComponent(url);
-
-            player.src({
-                src: secureStreamUrl,
-                type: 'application/x-mpegURL'
-            });
-
-            player.ready(function() {
-                player.play();
-            });
-        }
-    </script>
-</body>
-</html>
