@@ -3,9 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
-    <!-- Lecteur Video.js stable pour TV -->
-    <link href="https://zencdn.net" rel="stylesheet" />
-    <script src="https://zencdn.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
@@ -33,7 +30,7 @@
         
         /* ZONE DU PLAYER */
         .main-player { width: 45%; height: 100%; background: black; position: relative; display: flex; align-items: center; justify-content: center; }
-        .video-js { width: 100% !important; height: 100% !important; }
+        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
         .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; z-index: 10; }
         .player-info h1 { font-size: 22px; color: #ff9900; }
     </style>
@@ -72,9 +69,9 @@
         <div id="channels-container"></div>
     </div>
 
-    <!-- PLAYER VIDÉO -->
+    <!-- PLAYER VIDÉO HTML5 UNIVERSEL POUR TV -->
     <div class="main-player">
-        <video id="yapessPlayer" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto"></video>
+        <video id="yapessPlayer" controls autoplay playsinline></video>
         <div class="player-info">
             <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
@@ -84,13 +81,7 @@
         let serverUrl = "";
         let username = "";
         let password = "";
-
-        const player = videojs('yapessPlayer', {
-            autoplay: true,
-            muted: true,
-            controls: true,
-            html5: { vhs: { overrideNative: true } }
-        });
+        const video = document.getElementById('yapessPlayer');
 
         function connexionXtream() {
             serverUrl = document.getElementById('xp-url').value.trim();
@@ -98,30 +89,22 @@
             password = document.getElementById('xp-pass').value.trim();
 
             if(!serverUrl || !username || !password) { alert("Remplissez les cases !"); return; }
-            
-            // On affiche le message de chargement et on bloque le bouton pendant la recherche
             document.getElementById('login-status').innerText = "Connexion directe au serveur...";
 
             const targetUrl = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
             
-            // APPEL DIRECT SANS PROXY
             fetch(targetUrl)
-                .then(res => {
-                    if (!res.ok) { throw new Error("Réponse serveur incorrecte"); }
-                    return res.json();
-                })
+                .then(res => res.json())
                 .then(categories => {
                     if (categories && categories.length > 0) {
-                        document.getElementById('login-status').innerText = "Authentification réussie !";
                         afficherCategories(categories);
                         document.getElementById('login-screen').style.display = 'none';
                     } else {
-                        document.getElementById('login-status').innerText = "Erreur : Identifiants ou serveur invalides.";
+                        document.getElementById('login-status').innerText = "Erreur : Données invalides.";
                     }
                 })
                 .catch(err => { 
-                    console.error(err);
-                    document.getElementById('login-status').innerText = "Erreur réseau. Vérifiez l'URL ou l'accès HTTPS de la TV."; 
+                    document.getElementById('login-status').innerText = "Erreur réseau HTTPS."; 
                 });
         }
 
@@ -160,27 +143,30 @@
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // Demande formelle du format m3u8 (HLS)
-                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
-                            lancerFluxPro(streamUrl, stream.name);
+                            // CONFIGURATION FINALE : Flux brut Xtream direct sans extension pour forcer le lecteur TV à décoder lui-même
+                            const streamUrl = `${serverUrl}/${username}/${password}/${stream.stream_id}`;
+                            lancerFluxTV(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
-                })
-                .catch(e => { container.innerHTML = "<p style='color:red;'>Erreur de chargement des flux.</p>"; });
+                });
         }
 
-        function lancerFluxPro(url, nomChaine) {
+        function lancerFluxTV(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
 
-            player.src({
-                src: url,
-                type: 'application/x-mpegURL'
-            });
-
-            player.ready(function() {
-                player.play();
-            });
+            // Chargement natif HTML5
+            video.src = url;
+            video.load();
+            
+            // Forçage de lecture avec gestion du mode muet initial
+            video.muted = true; // Pour contourner le blocage de sécurité initial
+            var playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Lecture automatique bloquée. Clic requis.");
+                });
+            }
         }
     </script>
 </body>
