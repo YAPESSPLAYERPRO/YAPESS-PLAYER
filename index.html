@@ -30,9 +30,7 @@
         
         /* ZONE DU PLAYER ACCESSIBLE */
         .main-player { width: 45%; height: 100%; background: #000; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-        .tv-screen { border: 2px dashed #333; width: 100%; height: 60%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; background: #080808; margin-bottom: 20px; }
-        .btn-external { display: none; padding: 15px 25px; background: #ff9900; color: black; font-weight: bold; text-decoration: none; border-radius: 5px; font-size: 16px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(255,153,0,0.3); margin: 5px; }
-        .btn-vlc { background: #ff6600; } /* Couleur Orange VLC */
+        .tv-screen { border: 2px dashed #ff9900; width: 100%; height: 60%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; background: #080808; margin-bottom: 20px; }
         .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; }
         .player-info h1 { font-size: 22px; color: #ff9900; }
     </style>
@@ -74,13 +72,8 @@
     <!-- ZONE DE LECTURE AUTOMATIQUE COMPATIBLE TV -->
     <div class="main-player">
         <div class="tv-screen">
-            <p id="tv-status" style="color: #666; margin-bottom: 15px;">Sélectionnez une chaîne pour diffuser</p>
-            
-            <!-- Bouton 1 : Lien Direct (Pour TV Samsung/LG qui gèrent l'ouverture native) -->
-            <a href="#" id="externalPlayerBtn" class="btn-external">▶️ Lecteur TV Direct</a>
-            
-            <!-- Bouton 2 : Forçage VLC Mobile / Android TV / Fire Stick (Via protocole d'application) -->
-            <a href="#" id="vlcPlayerBtn" class="btn-external btn-vlc">🍊 Ouvrir dans VLC</a>
+            <p id="tv-status" style="color: #ff9900; font-size: 18px; font-weight: bold; text-transform: uppercase;">Moteur ExoPlayer</p>
+            <p id="tv-sub" style="color: #666; font-size: 13px; margin-top: 10px; padding: 0 10px;">Sélectionnez une chaîne. ExoPlayer se lancera automatiquement en plein écran.</p>
         </div>
         <div class="player-info">
             <h1 id="current-channel-title">YAPESS PLAYER PREMIUM</h1>
@@ -147,30 +140,25 @@
                         div.innerText = stream.name;
                         div.onclick = () => {
                             const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.ts`;
-                            preparerFluxLancement(streamUrl, stream.name);
+                            lancerDansExoPlayer(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
                 });
         }
 
-        function preparerFluxLancement(url, nomChaine) {
+        function lancerDansExoPlayer(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
-            document.getElementById('tv-status').innerText = "Choisissez votre mode de lecture :";
+            document.getElementById('tv-sub').innerText = "Envoi du flux vers ExoPlayer natif...";
             
-            // 1. Configuration du bouton direct
-            const btnDirect = document.getElementById('externalPlayerBtn');
-            btnDirect.href = url; 
-            btnDirect.style.display = "inline-block";
-
-            // 2. Configuration du bouton magique VLC (Protocole Intent Android / Android TV / Fire Stick)
-            const btnVlc = document.getElementById('vlcPlayerBtn');
-            
-            // En enlevant le "https://" et en mettant "vlc://", l'application VLC comprend qu'elle doit lire le flux directement
-            const vlcUrl = url.replace("https://", "vlc://").replace("http://", "vlc://");
-            
-            btnVlc.href = vlcUrl;
-            btnVlc.style.display = "inline-block";
+            // PONT MAGIQUE ANDROID NATIVE : Cet ordre va réveiller ExoPlayer dans l'application APK Android !
+            if (window.AndroidIPTV && window.AndroidIPTV.playStream) {
+                window.AndroidIPTV.playStream(url, nomChaine);
+            } else {
+                console.log("Lien généré pour ExoPlayer Android : " + url);
+                // Si on teste sur ordinateur, on ouvre le lien pour simuler l'appel
+                window.location.href = url;
+            }
         }
     </script>
 </body>
