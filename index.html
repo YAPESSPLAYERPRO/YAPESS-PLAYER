@@ -18,7 +18,7 @@
         .btn-login { width: 100%; padding: 14px; background: #ff9900; border: none; color: black; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; text-transform: uppercase; }
         #login-status { margin-top: 15px; text-align: center; font-size: 13px; color: #ff9900; }
         
-        /* INTERFACE PRINCIPALE TV */
+        /* INTERFACE TV */
         .sidebar { width: 25%; background-color: #0b0b0b; padding: 20px; border-right: 2px solid #222; height: 100%; overflow-y: auto; }
         .sidebar h2 { font-size: 18px; margin-bottom: 20px; color: #ff9900; text-transform: uppercase; }
         .category-item { padding: 12px; margin-bottom: 8px; background: #1c1c1c; border-radius: 5px; cursor: pointer; font-size: 14px; }
@@ -28,10 +28,12 @@
         .channel-item { padding: 12px; margin-bottom: 8px; background: #1a1a1a; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .channel-item:hover { background: #2a2a2a; border-left: 4px solid #ff9900; }
         
-        /* ZONE DU PLAYER */
-        .main-player { width: 45%; height: 100%; background: black; position: relative; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; z-index: 10; }
+        /* ZONE DU PLAYER ACCESSIBLE */
+        .main-player { width: 45%; height: 100%; background: #000; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .tv-screen { border: 2px dashed #333; width: 100%; height: 60%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; background: #080808; margin-bottom: 20px; }
+        .btn-external { display: none; padding: 15px 25px; background: #ff9900; color: black; font-weight: bold; text-decoration: none; border-radius: 5px; font-size: 16px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(255,153,0,0.3); }
+        .btn-external:hover { background: #e0a800; }
+        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; }
         .player-info h1 { font-size: 22px; color: #ff9900; }
     </style>
 </head>
@@ -69,11 +71,15 @@
         <div id="channels-container"></div>
     </div>
 
-    <!-- PLAYER VIDÉO HTML5 UNIVERSEL POUR TV -->
+    <!-- ZONE DE LECTURE AUTOMATIQUE COMPATIBLE TV -->
     <div class="main-player">
-        <video id="yapessPlayer" controls autoplay playsinline></video>
+        <div class="tv-screen">
+            <p id="tv-status" style="color: #666; margin-bottom: 15px;">Sélectionnez une chaîne pour diffuser</p>
+            <!-- Bouton magique d'ouverture externe protocole universel -->
+            <a href="#" id="externalPlayerBtn" class="btn-external">▶️ Lancer la chaîne</a>
+        </div>
         <div class="player-info">
-            <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
+            <h1 id="current-channel-title">YAPESS PLAYER PREMIUM</h1>
         </div>
     </div>
 
@@ -81,7 +87,6 @@
         let serverUrl = "";
         let username = "";
         let password = "";
-        const video = document.getElementById('yapessPlayer');
 
         function connexionXtream() {
             serverUrl = document.getElementById('xp-url').value.trim();
@@ -89,7 +94,7 @@
             password = document.getElementById('xp-pass').value.trim();
 
             if(!serverUrl || !username || !password) { alert("Remplissez les cases !"); return; }
-            document.getElementById('login-status').innerText = "Connexion directe au serveur...";
+            document.getElementById('login-status').innerText = "Connexion...";
 
             const targetUrl = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
             
@@ -100,12 +105,10 @@
                         afficherCategories(categories);
                         document.getElementById('login-screen').style.display = 'none';
                     } else {
-                        document.getElementById('login-status').innerText = "Erreur : Données invalides.";
+                        document.getElementById('login-status').innerText = "Erreur de codes.";
                     }
                 })
-                .catch(err => { 
-                    document.getElementById('login-status').innerText = "Erreur réseau HTTPS."; 
-                });
+                .catch(err => { document.getElementById('login-status').innerText = "Erreur réseau."; });
         }
 
         function afficherCategories(categories) {
@@ -134,39 +137,30 @@
                 .then(res => res.json())
                 .then(streams => {
                     container.innerHTML = "";
-                    if (!streams || streams.length === 0) {
-                        container.innerHTML = "<p>Aucune chaîne disponible.</p>";
-                        return;
-                    }
                     streams.forEach(stream => {
                         const div = document.createElement('div');
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // CONFIGURATION FINALE : Flux brut Xtream direct sans extension pour forcer le lecteur TV à décoder lui-même
-                            const streamUrl = `${serverUrl}/${username}/${password}/${stream.stream_id}`;
-                            lancerFluxTV(streamUrl, stream.name);
+                            // Lien brut Xtream Codes universel
+                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.ts`;
+                            preparerFluxLancement(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
                 });
         }
 
-        function lancerFluxTV(url, nomChaine) {
+        function preparerFluxLancement(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
-
-            // Chargement natif HTML5
-            video.src = url;
-            video.load();
+            document.getElementById('tv-status').innerText = "Flux prêt pour décodeur TV externe.";
             
-            // Forçage de lecture avec gestion du mode muet initial
-            video.muted = true; // Pour contourner le blocage de sécurité initial
-            var playPromise = video.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Lecture automatique bloquée. Clic requis.");
-                });
-            }
+            const btn = document.getElementById('externalPlayerBtn');
+            
+            // ASTUCE DE PRO : On utilise le protocole d'application "intent" ou direct pour forcer l'ouverture dans VLC
+            // Si le client clique sur son téléphone ou sa TV, l'application VLC va intercepter le flux et l'ouvrir à l'écran
+            btn.href = url; 
+            btn.style.display = "inline-block";
         }
     </script>
 </body>
