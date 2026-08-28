@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>YAPESS PLAYER Premium</title>
+    <!-- Le moteur magique qui permet aux navigateurs TV de décoder le stream -->
+    <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #141414; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; }
@@ -28,10 +30,10 @@
         .channel-item { padding: 12px; margin-bottom: 8px; background: #1a1a1a; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .channel-item:hover { background: #2a2a2a; border-left: 4px solid #ff9900; }
         
-        /* ZONE DU PLAYER ACCESSIBLE */
-        .main-player { width: 45%; height: 100%; background: #000; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-        .tv-screen { border: 2px dashed #ff9900; width: 100%; height: 60%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; background: #080808; margin-bottom: 20px; }
-        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; }
+        /* LECTEUR VIDÉO TV */
+        .main-player { width: 45%; height: 100%; background: black; position: relative; }
+        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+        .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; z-index: 10; }
         .player-info h1 { font-size: 22px; color: #ff9900; }
     </style>
 </head>
@@ -69,14 +71,11 @@
         <div id="channels-container"></div>
     </div>
 
-    <!-- ZONE DE LECTURE AUTOMATIQUE COMPATIBLE TV -->
+    <!-- PLAYER VIDÉO HTML5 UNIVERSEL AVEC HLS.JS -->
     <div class="main-player">
-        <div class="tv-screen">
-            <p id="tv-status" style="color: #ff9900; font-size: 18px; font-weight: bold; text-transform: uppercase;">Moteur ExoPlayer</p>
-            <p id="tv-sub" style="color: #666; font-size: 13px; margin-top: 10px; padding: 0 10px;">Sélectionnez une chaîne. ExoPlayer se lancera automatiquement en plein écran.</p>
-        </div>
+        <video id="yapessPlayer" controls autoplay muted playsinline></video>
         <div class="player-info">
-            <h1 id="current-channel-title">YAPESS PLAYER PREMIUM</h1>
+            <h1 id="current-channel-title">Sélectionnez une chaîne</h1>
         </div>
     </div>
 
@@ -84,6 +83,8 @@
         let serverUrl = "";
         let username = "";
         let password = "";
+        const video = document.getElementById('yapessPlayer');
+        let hls = null;
 
         function connexionXtream() {
             serverUrl = document.getElementById('xp-url').value.trim();
@@ -91,8 +92,9 @@
             password = document.getElementById('xp-pass').value.trim();
 
             if(!serverUrl || !username || !password) { alert("Remplissez les cases !"); return; }
-            document.getElementById('login-status').innerText = "Connexion...";
+            document.getElementById('login-status').innerText = "Connexion au serveur...";
 
+            // On demande les catégories en direct
             const targetUrl = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_categories`;
             
             fetch(targetUrl)
@@ -105,7 +107,7 @@
                         document.getElementById('login-status').innerText = "Erreur de codes.";
                     }
                 })
-                .catch(err => { document.getElementById('login-status').innerText = "Erreur réseau."; });
+                .catch(err => { document.getElementById('login-status').innerText = "Erreur réseau HTTPS."; });
         }
 
         function afficherCategories(categories) {
@@ -128,9 +130,7 @@
             const container = document.getElementById('channels-container');
             container.innerHTML = "<p>Chargement...</p>";
 
-            const targetUrl = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams&category_id=${categoryId}`;
-
-            fetch(targetUrl)
+            fetch(`${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams&category_id=${categoryId}`)
                 .then(res => res.json())
                 .then(streams => {
                     container.innerHTML = "";
@@ -139,25 +139,37 @@
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.ts`;
-                            lancerDansExoPlayer(streamUrl, stream.name);
+                            // REGLE DE PRO POUR LES TV : On force l'extension ".m3u8" et on ajoute le paramètre output=ts ou hls si le serveur le demande
+                            const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.m3u8`;
+                            lancerFluxTV(streamUrl, stream.name);
                         };
                         container.appendChild(div);
                     });
                 });
         }
 
-        function lancerDansExoPlayer(url, nomChaine) {
+        function lancerFluxTV(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
-            document.getElementById('tv-sub').innerText = "Envoi du flux vers ExoPlayer natif...";
-            
-            // PONT MAGIQUE ANDROID NATIVE : Cet ordre va réveiller ExoPlayer dans l'application APK Android !
-            if (window.AndroidIPTV && window.AndroidIPTV.playStream) {
-                window.AndroidIPTV.playStream(url, nomChaine);
-            } else {
-                console.log("Lien généré pour ExoPlayer Android : " + url);
-                // Si on teste sur ordinateur, on ouvre le lien pour simuler l'appel
-                window.location.href = url;
+
+            if (hls) {
+                hls.destroy();
+            }
+
+            // Si la TV gère le moteur Hls.js (Cas général des navigateurs)
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play().catch(e => console.log("Lecture bloquée"));
+                });
+            } 
+            // Pour les TV LG ou Samsung qui intègrent déjà le décodage HLS dans leur propre système
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
             }
         }
     </script>
