@@ -31,8 +31,8 @@
         /* ZONE DU PLAYER ACCESSIBLE */
         .main-player { width: 45%; height: 100%; background: #000; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
         .tv-screen { border: 2px dashed #333; width: 100%; height: 60%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; background: #080808; margin-bottom: 20px; }
-        .btn-external { display: none; padding: 15px 25px; background: #ff9900; color: black; font-weight: bold; text-decoration: none; border-radius: 5px; font-size: 16px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(255,153,0,0.3); }
-        .btn-external:hover { background: #e0a800; }
+        .btn-external { display: none; padding: 15px 25px; background: #ff9900; color: black; font-weight: bold; text-decoration: none; border-radius: 5px; font-size: 16px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(255,153,0,0.3); margin: 5px; }
+        .btn-vlc { background: #ff6600; } /* Couleur Orange VLC */
         .player-info { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.9)); padding: 30px 20px; pointer-events: none; }
         .player-info h1 { font-size: 22px; color: #ff9900; }
     </style>
@@ -75,8 +75,12 @@
     <div class="main-player">
         <div class="tv-screen">
             <p id="tv-status" style="color: #666; margin-bottom: 15px;">Sélectionnez une chaîne pour diffuser</p>
-            <!-- Bouton magique d'ouverture externe protocole universel -->
-            <a href="#" id="externalPlayerBtn" class="btn-external">▶️ Lancer la chaîne</a>
+            
+            <!-- Bouton 1 : Lien Direct (Pour TV Samsung/LG qui gèrent l'ouverture native) -->
+            <a href="#" id="externalPlayerBtn" class="btn-external">▶️ Lecteur TV Direct</a>
+            
+            <!-- Bouton 2 : Forçage VLC Mobile / Android TV / Fire Stick (Via protocole d'application) -->
+            <a href="#" id="vlcPlayerBtn" class="btn-external btn-vlc">🍊 Ouvrir dans VLC</a>
         </div>
         <div class="player-info">
             <h1 id="current-channel-title">YAPESS PLAYER PREMIUM</h1>
@@ -142,7 +146,6 @@
                         div.className = "channel-item";
                         div.innerText = stream.name;
                         div.onclick = () => {
-                            // Lien brut Xtream Codes universel
                             const streamUrl = `${serverUrl}/live/${username}/${password}/${stream.stream_id}.ts`;
                             preparerFluxLancement(streamUrl, stream.name);
                         };
@@ -153,14 +156,21 @@
 
         function preparerFluxLancement(url, nomChaine) {
             document.getElementById('current-channel-title').innerText = nomChaine;
-            document.getElementById('tv-status').innerText = "Flux prêt pour décodeur TV externe.";
+            document.getElementById('tv-status').innerText = "Choisissez votre mode de lecture :";
             
-            const btn = document.getElementById('externalPlayerBtn');
+            // 1. Configuration du bouton direct
+            const btnDirect = document.getElementById('externalPlayerBtn');
+            btnDirect.href = url; 
+            btnDirect.style.display = "inline-block";
+
+            // 2. Configuration du bouton magique VLC (Protocole Intent Android / Android TV / Fire Stick)
+            const btnVlc = document.getElementById('vlcPlayerBtn');
             
-            // ASTUCE DE PRO : On utilise le protocole d'application "intent" ou direct pour forcer l'ouverture dans VLC
-            // Si le client clique sur son téléphone ou sa TV, l'application VLC va intercepter le flux et l'ouvrir à l'écran
-            btn.href = url; 
-            btn.style.display = "inline-block";
+            // En enlevant le "https://" et en mettant "vlc://", l'application VLC comprend qu'elle doit lire le flux directement
+            const vlcUrl = url.replace("https://", "vlc://").replace("http://", "vlc://");
+            
+            btnVlc.href = vlcUrl;
+            btnVlc.style.display = "inline-block";
         }
     </script>
 </body>
